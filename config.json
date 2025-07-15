@@ -1,0 +1,8 @@
+{
+    "ffm_path": "h:\\SnowbreakContainmentZone\\GameUnpack-master\\CBUnpack3\\tool\\ffmpeg\\bin\\ffmpeg.exe",
+    "umo_path": "h:\\SnowbreakContainmentZone\\GameUnpack-master\\CBUnpack3\\tool\\umodel\\umodel_materials.exe",
+    "vgm_path": "h:\\SnowbreakContainmentZone\\GameUnpack-master\\CBUnpack3\\tool\\vgmstream\\vgmstream-cli.exe",
+    "spine_path": "D:\\spinepro_218037\\Spine.exe",
+    "out_path": "h:\\SnowbreakContainmentZone\\GameUnpack-master\\CBUnpack3\\out",
+    "input_path": "H:\\SnowbreakContainmentZone\\V3.0.0.130-20250710\\UNPAK"
+}
