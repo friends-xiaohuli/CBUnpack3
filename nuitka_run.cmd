@@ -1,1 +1,0 @@
-nuitka --standalone --onefile --output-dir=dist --include-data-dir=res=res main.py

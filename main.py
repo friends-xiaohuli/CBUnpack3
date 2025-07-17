@@ -1,16 +1,16 @@
-import os
+import shutil
+from os import path, makedirs, getcwd
 import sys
 import time
 import winsound
 from loguru import logger
 import questionary
-
-
-from config_manager import ConfigManager
 from config_manager import resource_path
 from CBUnpack3 import CBUNpakMain
+from CBUnpack import CBUNpakIncr
 from check import check_tool_availability
-
+import subprocess
+from spinejsonexport import sjemain
 
 logger.info('''
  ###    License
@@ -36,13 +36,11 @@ logger.info('''
 VER = "3.0.5"
 BUILD = "2025-7"
 
-
-
 if '__compiled__' in globals():
     root_directory = sys.path[0]
     logger.debug('> 打包状态')
 else:
-    root_directory = os.path.dirname(os.path.abspath(__file__))
+    root_directory = path.dirname(path.abspath(__file__))
     logger.debug('> 源码运行状态')
 
 logger.debug(f'程序目录：{root_directory}')
@@ -53,17 +51,14 @@ logger.debug(f'程序目录：{root_directory}')
 # ======================== #
 def init_logger():
     today = time.strftime("%Y-%m-%d")
-    log_directory = os.path.join(root_directory, "logs")
-    os.makedirs(os.path.dirname(log_directory), exist_ok=True)
-    log_path = os.path.join(log_directory, f"{today}.log")
+    log_directory = path.join(root_directory, "logs")
+    makedirs(path.dirname(log_directory), exist_ok=True)
+    log_path = path.join(log_directory, f"{today}.log")
     logger.remove()
     logger.add(sys.stderr, level="DEBUG")  # 控制台
     logger.add(log_path, encoding="utf-8", level="DEBUG")  # 文件日志
     logger.info(f"日志系统已初始化 -> {log_path}")
 
-
-
-ConfigManager()
 
 def main_menu():
     """主菜单交互系统"""
@@ -75,14 +70,14 @@ def main_menu():
                 {"name": "尘白禁区批量解包", "disabled": "CB-UNpakTool"},  # 禁用选项
                 {"name": "构建版本", "disabled": "V" + VER},  # 禁用选项
                 questionary.Separator(),  # 视觉分隔线
-                {"name": "0.初始化", "value": "reset"},
-                {"name": "1.测试构建", "value": "check"},
-                {"name": "2.一键解包", "value": "CBUNpakMain"},
-                {"name": "3.独立处理", "value": "alone"},
+                {"name": "0.设置文件重置", "value": "reset"},
+                {"name": "1.测试第三方exe有效性", "value": "check"},
+                {"name": "2.开始解包", "value": "CBUNpakMain"},
+                {"name": "3.待开发", "value": "alone"},
                 questionary.Separator(),  # 添加视觉分隔线
                 {"name": "by 绘星痕、小狐狸", "disabled": BUILD}  # 禁用选项
-                ],
-            use_arrow_keys=True # 启用箭头导航
+            ],
+            use_arrow_keys=True  # 启用箭头导航
         ).ask()
 
         # 处理用户选择
@@ -100,17 +95,80 @@ def main_menu():
 
 
 def choice_reset():
-    ConfigManager().reset()
+    cfg.reset()
+
 
 def choice_check():
     check_tool_availability()
 
+
+def SnowUnpack():
+    pak_path = str(cfg.get("pak_path"))
+    quickbms_path = str(cfg.get("quickbms_path"))
+    unpack_path = str(cfg.get("unpack_path"))
+    if path.exists(unpack_path):
+        shutil.rmtree(unpack_path)
+    makedirs(unpack_path)
+    cmd = [f"\"{quickbms_path}\"",
+           "-o -F \"{}.pak\"",
+           f"\"{getcwd()}\\res\\unreal_tournament_4_0.4.27e_snowbreak.bms\"",
+           f"\"{pak_path}\"",
+           f"\"{unpack_path}\""]
+    subprocess.run(" ".join(cmd))
+
+
 def choice_CBUNpakMain():
-    CBUNpakMain()
+    choice1 = questionary.select(
+        "是否需要解密pak文件：",
+        choices=[
+            {"name": "请选择操作：", "disabled": ""},  # 禁用选项
+            questionary.Separator(),  # 视觉分隔线
+            {"name": "0.是", "value": True},
+            {"name": "1.否", "value": False},
+        ],
+        use_arrow_keys=True  # 启用箭头导航
+    ).ask()
+    # 处理用户选择
+
+    choice2 = questionary.select(
+        "提取全部默认资源 or 提取增量资源：",
+        choices=[
+            {"name": "请选择操作：", "disabled": ""},  # 禁用选项
+            questionary.Separator(),  # 视觉分隔线
+            {"name": "0.提取全部默认资源", "value": 0},
+            {"name": "1.提取增量资源", "value": 1},
+            {"name": "2.跳过该步骤", "value": 2},
+        ],
+        use_arrow_keys=True  # 启用箭头导航
+    ).ask()
+    if choice2 == 1:
+        choice3 = questionary.select(
+            "是否渲染Spine资源：",
+            choices=[
+                {"name": "请选择操作：", "disabled": ""},  # 禁用选项
+                questionary.Separator(),  # 视觉分隔线
+                {"name": "0.是", "value": 1},
+                {"name": "1.否", "value": 0},
+            ],
+            use_arrow_keys=True  # 启用箭头导航
+        ).ask()
+    else:
+        choice3 = 0
+    cfg.Json_list = []
+    # 处理用户选择
+    if choice1:
+        SnowUnpack()
+    if choice2 == 0:
+        CBUNpakMain()
+    elif choice2 == 1:
+        CBUNpakIncr()
+        if choice3:
+            sjemain()
+
 
 def choice_alone():
     logger.warning("Ciallo～(∠・ω< )⌒★...")
-    audio_path = resource_path("Ciallo.wav") 
+    audio_path = resource_path("Ciallo.wav")
     winsound.PlaySound(audio_path, winsound.SND_ASYNC)
     logger.success("木落Cia草黃，登高望戎llo～(∠·ω< )⌒★。 (秋, 虜)《古風 十四》（李白）")
     logger.success("Ciallo～(∠·ω< )⌒★白如玉，團團下庭綠。 (秋, 露)《古風 二十三》（李白）")
@@ -133,14 +191,16 @@ def choice_alone():
     logger.success("白楊Cia月苦，早llo～(∠·ω< )⌒★豫章山。 (秋, 落)《豫章行》（李白）")
     logger.success("秦人半作燕地Cia，胡馬翻銜llo～(∠·ω< )⌒★陽草。 (囚, 洛)《猛虎行》（李白）")
     logger.success("君不見晉Cia羊公一片石，龜頭剝llo～(∠·ω< )⌒★生莓苔。 (朝, 落)《襄陽歌》（李白）")
-    logger.success("東風已綠瀛洲Cia，紫殿紅llo～(∠·ω< )⌒★覺春好，池南柳色半青青。 (草, 樓)《侍從宜春苑奉詔賦龍池柳色初青聽新鶯百囀歌》（李白）")
+    logger.success(
+        "東風已綠瀛洲Cia，紫殿紅llo～(∠·ω< )⌒★覺春好，池南柳色半青青。 (草, 樓)《侍從宜春苑奉詔賦龍池柳色初青聽新鶯百囀歌》（李白）")
     logger.success("Cia憶蓬池阮公詠，因吟llo～(∠·ω< )⌒★水揚洪波。 (却, 淥)《梁園吟》（李白）")
     logger.success("酣來自作青海舞，Cia風吹llo～(∠·ω< )⌒★紫綺冠。 (秋, 落)《東山吟》（李白）")
     logger.success("春風試暖昭陽殿，明月還過鳷Ciallo～(∠·ω< )⌒★。 (鵲, 樓)《永王東巡歌十一首 四》（李白）")
     logger.success("姑蘇成蔓Cia，麋llo～(∠·ω< )⌒★空悲吟。 (草, 鹿)《贈薛校書》（李白）")
     logger.success("媿無橫Cia功，虛負雨llo～(∠·ω< )⌒★恩。 (草, 露)《書情題蔡舍人雄》（李白）")
     logger.success("爲我Cia真llo～(∠·ω< )⌒★，天人慙妙工。 (草, 籙)《訪道安陵遇蓋還爲余造真籙臨別留贈》（李白）")
-    logger.success("組練明Cia浦，llo～(∠·ω< )⌒★船入郢都。 (秋, 樓)《中丞宋公以吳兵三千赴河南軍次尋陽脫余之囚參謀幕府因贈之》（李白）")
+    logger.success(
+        "組練明Cia浦，llo～(∠·ω< )⌒★船入郢都。 (秋, 樓)《中丞宋公以吳兵三千赴河南軍次尋陽脫余之囚參謀幕府因贈之》（李白）")
     logger.success("漢Cia季布llo～(∠·ω< )⌒★朱家，楚逐伍胥去章華。 (求, 魯)《江上贈竇長史》（李白）")
     logger.success("夢得池塘生春Cia，使我長價登llo～(∠·ω< )⌒★詩。 (草, 樓)《贈從弟南平太守之遙二首 一》（李白）")
     logger.success("竹影掃Cia月，荷衣llo～(∠·ω< )⌒★古池。 (秋, 落)《贈閭丘處士》（李白）")
@@ -153,7 +213,8 @@ def choice_alone():
     logger.success("Cia別凌煙llo～(∠·ω< )⌒★，賢豪滿行舟。 (朝, 樓)《流夜郎永華寺寄尋陽羣官》（李白）")
     logger.success("君Cia陳琳檄，我書llo～(∠·ω< )⌒★連箭。 (草, 魯)《江夏寄漢陽輔錄事》（李白）")
     logger.success("客行悲清Cia，永llo～(∠·ω< )⌒★苦不達。 (秋, 路)《江上寄元六林宗》（李白）")
-    logger.success("Cia登郡llo～(∠·ω< )⌒★望，松色寒轉碧。 (却, 樓)《宣州九日聞崔四侍御與宇文太守遊敬亭余時登響山不同此賞醉後寄崔侍御二首 一》（李白）")
+    logger.success(
+        "Cia登郡llo～(∠·ω< )⌒★望，松色寒轉碧。 (却, 樓)《宣州九日聞崔四侍御與宇文太守遊敬亭余時登響山不同此賞醉後寄崔侍御二首 一》（李白）")
     logger.success("誰道泰山高，下Ciallo～(∠·ω< )⌒★連節。 (却, 魯)《別魯頌》（李白）")
     logger.success("誰云秦軍衆，摧Ciallo～(∠·ω< )⌒★連舌。 (却, 魯)《別魯頌》（李白）")
     logger.success("Cia雲llo～(∠·ω< )⌒★夢渚，瑤草空高堂。 (朝, 落)《留別曹南羣官之江南》（李白）")
@@ -170,7 +231,8 @@ def choice_alone():
     logger.success("Cia風渡江來，吹llo～(∠·ω< )⌒★山上月。 (秋, 落)《送崔氏昆季之金陵》（李白）")
     logger.success("早行子午關，Cia登山llo～(∠·ω< )⌒★遠。 (却, 路)《荅長安崔少府叔封遊終南翠微寺太宗皇帝金沙泉見寄》（李白）")
     logger.success("客星動太微，Cia去llo～(∠·ω< )⌒★陽殿。 (朝, 洛)《詶張卿夜宿南陵見贈》（李白）")
-    logger.success("Cia沽金陵酒，歌吹孫楚llo～(∠·ω< )⌒★。 (朝, 樓)《翫月金陵城西孫楚酒樓達曙歌吹日晚乘醉著紫綺裘烏紗巾與酒客數人櫂歌秦淮往石頭訪崔四侍御》（李白）")
+    logger.success(
+        "Cia沽金陵酒，歌吹孫楚llo～(∠·ω< )⌒★。 (朝, 樓)《翫月金陵城西孫楚酒樓達曙歌吹日晚乘醉著紫綺裘烏紗巾與酒客數人櫂歌秦淮往石頭訪崔四侍御》（李白）")
     logger.success("挂帆Cia江上，不爲雲llo～(∠·ω< )⌒★制。 (秋, 羅)《荅高山人兼呈權顧二侯》（李白）")
     logger.success("挂席凌蓬Cia，觀濤憩樟llo～(∠·ω< )⌒★。 (丘, 樓)《與從姪杭州刺史良遊天竺寺》（李白）")
     logger.success("客來花雨際，Cia水llo～(∠·ω< )⌒★金池。 (秋, 落)《同族姪評事黯遊昌禪師山池二首 二》（李白）")
@@ -196,15 +258,31 @@ def choice_alone():
     logger.success("臺傾鳷Cia觀，宮沒鳳凰llo～(∠·ω< )⌒★。 (鵲, 樓)《月夜金陵懷古》（李白）")
     logger.success("木落禽Cia在，籬疎獸llo～(∠·ω< )⌒★成。 (巢, 路)《冬日歸舊山》（李白）")
 
-
     logger.warning("因幡巡 提醒您：这部分作者还没写完")
-
 
 
 if __name__ == "__main__":
     try:
         init_logger()
+        from config_manager import cfg
+
         main_menu()
     except KeyboardInterrupt:
         logger.warning("程序已意外退出...")
         exit()
+    """
+        "ffm_path": ffmpeg.exe 文件路径
+        "umo_path": umodel.exe 文件路径
+        "vgm_path": vgmstream-cli.exe 文件路径
+        "quickbms_path": quickbms_4gb_files.exe 文件路径
+        "spine_path": Spine.exe 文件路径
+        "max_workers": 多线程数
+        解密解包 设置路径
+        "pak_path": snow_pak 文件夹路径
+        "unpack_path": 解密完成，待提取资源 文件夹路径(可选，默认为 "./unpack")
+        "resource_path": 提取资源导出 文件夹路径(可选，默认为 "./unpack")
+        提取增量资源 设置路径
+        "past_path": 旧版本 解包文件夹路径
+        "new_path": 新版本 解包文件夹路径
+        "increase_path": 增量解包导出 文件夹路径(可选，默认为 "./increase")
+        """

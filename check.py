@@ -1,6 +1,6 @@
-import os
+from os import path
 import subprocess
-from config_manager import ConfigManager
+from config_manager import cfg
 from loguru import logger
 
 
@@ -9,7 +9,6 @@ def check_tool_availability() -> int:
     检查配置文件中指定的工具路径是否有效并可运行。
     返回 0 表示所有工具均通过；返回 1 表示存在不可用的工具。
     """
-    cfg = ConfigManager()
     tool_paths = {
         "FFmpeg":    (cfg.get("ffm_path"), ["-version"]),
         "vgmstream": (cfg.get("vgm_path"), []),
@@ -22,7 +21,7 @@ def check_tool_availability() -> int:
     for tool, (exe, args) in tool_paths.items():
         logger.info(f"检查 {tool} …")
 
-        if not exe or not os.path.isfile(exe):
+        if not exe or not path.isfile(exe):
             logger.error(f"[路径无效] {tool} 的路径配置错误或文件不存在：{exe}")
             failed = True
             continue

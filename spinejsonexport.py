@@ -3,20 +3,22 @@ import subprocess
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 from loguru import logger
-from typing import Optional
-
-from config_manager import ConfigManager
+from concurrent.futures import ThreadPoolExecutor
+from config_manager import cfg
 
 # ================== 可配置区 ==================
-cfg = ConfigManager()
 ffm_path = str(cfg.get("ffm_path"))  # 获取配置中的 FFMPEG 路径
 spine_path = str(cfg.get("spine_path"))  # 获取配置中的 FFMPEG 路径
-SPINE_EXE = spine_path # Spine 可执行文件
+max_workers = cfg.get("max_workers")  # 多线程数
+SPINE_EXE = spine_path  # Spine 可执行文件
 VERSION = "3.8.75"  # 须与安装包版本一致
 DEFAULT_OUTPUT_DIR = "export"  # 默认输出目录
 DEFAULT_TEMPLATE_NAME = "template.export.json"  # 自动生成的模板文件名
-CLEANUP = False  # 是否执行动画清理
-BASE_DIR = Path(r"H:\SnowbreakContainmentZone\GameUnpack-master\CBUnpack3\out")
+CLEANUP = True  # 是否执行动画清理
+BASE_DIR = Path(r"E:\Unpack\尘白禁区\increase\Login_Plots")
+# BASE_DIR = Path(str(cfg.get("increase_path")))
+
+
 # =============================================
 
 
@@ -53,6 +55,7 @@ def is_export_json(json_path: Path) -> bool:
         logger.warning(f"❌ 解析 export.json 出错：{json_path} | {e}")
         return False
 
+
 def collect_projects(base_dir: Path) -> List[Tuple[Path, Dict[str, Union[Path, List[Path]]]]]:
     """扫描 BASE_DIR，收集包含 project/skeleton/atlas/images 的目录"""
     projects = []
@@ -62,7 +65,7 @@ def collect_projects(base_dir: Path) -> List[Tuple[Path, Dict[str, Union[Path, L
     for folder in base_dir.rglob("*"):
         if not folder.is_dir():
             continue
-            
+
         project_info = {
             "projects": [],
             "skeletons": [],
@@ -70,7 +73,7 @@ def collect_projects(base_dir: Path) -> List[Tuple[Path, Dict[str, Union[Path, L
             "images": None,
             "exports": [],
         }
-        
+
         # 检查是否有 images 目录
         images_dir = folder / "images"
         if images_dir.is_dir():
@@ -80,18 +83,18 @@ def collect_projects(base_dir: Path) -> List[Tuple[Path, Dict[str, Union[Path, L
         for file in folder.iterdir():
             if not file.is_file():
                 continue
-                
+
             file_lower = file.name.lower()
-            
+
             if file_lower.endswith(".spine"):
                 project_info["projects"].append(file)
-                
+
             elif file_lower.endswith(".skel") or file_lower.endswith(".json"):
                 if is_export_json(file):
                     project_info["exports"].append(file)
                 else:
                     project_info["skeletons"].append(file)
-                    
+
             elif file_lower.endswith(".atlas"):
                 project_info["atlases"].append(file)
 
@@ -101,6 +104,7 @@ def collect_projects(base_dir: Path) -> List[Tuple[Path, Dict[str, Union[Path, L
             logger.debug(f"发现项目目录: {folder}")
 
     return projects
+
 
 def build_export_template(img_dir: Path, output_dir: Path, base_name: str) -> dict:
     """
@@ -149,7 +153,8 @@ def build_export_template(img_dir: Path, output_dir: Path, base_name: str) -> di
         "audio": False
     }
 
-def ensure_export_json(folder: Path, project_info: dict, atlas_path: Path) -> Optional[Path]:
+
+def ensure_export_json(folder: Path, project_info: dict) -> Optional[Path]:
     """生成 export-mov 模板配置文件并强制覆盖旧的"""
     img_dir = project_info["images"]
     if not img_dir or not img_dir.is_dir():
@@ -172,20 +177,21 @@ def ensure_export_json(folder: Path, project_info: dict, atlas_path: Path) -> Op
         logger.error(f"❌ 写入模板失败: {e}")
         return None
 
+
 def run_spine(cmd: List[str], project_name: str):
     """执行 Spine 导出命令"""
     logger.info(f"🚀 开始导出项目: {project_name}")
     logger.debug("执行命令: " + " ".join(f'"{arg}"' if " " in arg else arg for arg in cmd))
-    
+
     try:
         result = subprocess.run(
-            cmd, 
-            capture_output=True, 
-            text=True, 
-            encoding="utf-8",
-            errors="replace"
+            cmd,
+            # capture_output=True,
+            # text=True,
+            # encoding="utf-8",
+            # errors="replace"
         )
-        
+
         if result.returncode == 0:
             logger.success(f"✅ {project_name} 导出成功")
         else:
@@ -195,21 +201,22 @@ def run_spine(cmd: List[str], project_name: str):
     except Exception as e:
         logger.error(f"❌ 调用 Spine 进程异常: {e}")
 
+
 def _export_single(folder: Path, project_info: dict, input_file: Path, file_type: str):
     """处理单个输入文件的导出"""
-    logger.info(f"\n{'='*40}\n📂 处理 {file_type}: {input_file.name}")
-    
+    logger.info(f"\n{'=' * 40}\n📂 处理 {file_type}: {input_file.name}")
+
     # 检查必备文件
     if not project_info["atlases"]:
         logger.warning("⚠️ 缺少 .atlas 文件，跳过")
         return
-        
+
     atlas_file = project_info["atlases"][0]
     logger.debug(f"使用的 atlas 文件: {atlas_file.name}")
 
     # 准备导出配置
-    export_json = ensure_export_json(folder, project_info, atlas_file)
-    
+    export_json = ensure_export_json(folder, project_info)
+
     if not export_json:
         logger.warning("⚠️ 无法获得导出设置，跳过")
         return
@@ -218,13 +225,13 @@ def _export_single(folder: Path, project_info: dict, input_file: Path, file_type
 
     cmd = [
         str(SPINE_EXE),
-        "--update", VERSION,
-        "--input", str(input_file),
-        "--export", str(export_json)
+        # "--update", VERSION,
+        # "-i", str(input_file),
+        "-e", str(export_json)
     ]
-    
-    if CLEANUP:
-        cmd.append("--clean")
+
+    # if CLEANUP:
+    #     cmd.append("--clean")
 
     run_spine(cmd, input_file.stem)
 
@@ -233,18 +240,9 @@ def _export_single(folder: Path, project_info: dict, input_file: Path, file_type
     if mov_file.exists():
         convert_mov_to_mp4(mov_file, folder / DEFAULT_OUTPUT_DIR)
 
-def export_bundle(folder: Path, project_info: dict):
-    """处理单个目录的导出任务"""
-    for project_file in project_info["projects"]:
-        _export_single(folder, project_info, project_file, "项目文件")
-    
-    if not project_info["projects"]:
-        for skeleton_file in project_info["skeletons"]:
-            _export_single(folder, project_info, skeleton_file, "骨架文件")
-
 
 # ========================== 主流程 ==========================
-def main():
+def sjemain():
     logger.info("🚀 Spine 批量导出工具启动")
     logger.info(f"基础目录: {BASE_DIR}")
     logger.info(f"Spine 版本: {VERSION}")
@@ -257,12 +255,30 @@ def main():
         logger.warning("⚠️ 未找到任何可导出的项目，程序退出")
         return
 
-    for folder, project_info in projects:
-        logger.info(f"🎬 开始处理目录: {folder}")
-        export_bundle(folder, project_info)
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # 提交所有任务到线程池，并传入索引 i
+        futures = []
+        for folder, project_info in projects:
+            logger.info(f"🎬 开始处理目录: {folder}")
+            if not project_info["projects"]:
+                file_type = "骨架文件"
+                futures.extend([
+                    executor.submit(_export_single, folder, project_info, skeleton_file, file_type)
+                    for skeleton_file in project_info["skeletons"]
+                ])
+            else:
+                file_type = "项目文件"
+                futures.extend([
+                    executor.submit(_export_single, folder, project_info, project_file, file_type)
+                    for project_file in project_info["projects"]
+                ])
+
+        # 可选：等待所有任务完成（with 语句会自动等待）
+        for future in futures:
+            future.result()  # 检查是否有异常
 
     logger.success("🏁 全部导出任务完成")
 
 
 if __name__ == "__main__":
-    main()
+    sjemain()

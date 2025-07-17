@@ -3,6 +3,7 @@ import sys
 import json
 from loguru import logger
 
+
 def get_root_directory():
     """获取程序根目录，支持打包和源码运行"""
     if '__compiled__' in globals():
@@ -10,21 +11,51 @@ def get_root_directory():
     else:
         return os.path.dirname(os.path.abspath(__file__))
 
+
 ROOT_DIR = get_root_directory()
 
 CONFIG_NAME = "config.json"
 
 
 class ConfigManager:
-    _REQUIRED_KEYS = ("ffm_path", "umo_path", "vgm_path","spine_path", "out_path", "input_path")
+    Json_list = []
+    _REQUIRED_KEYS = \
+        ("ffm_path", "umo_path", "vgm_path", "quickbms_path", "spine_path",
+         "max_workers", "UseCNName",
+         "pak_path", "unpack_path", "resource_path",
+         "past_path", "new_path", "increase_path", )
     _TEMPLATE = {
-        "ffm_path":  r"{root}\tool\ffmpeg\bin\ffmpeg.exe",
-        "umo_path":  r"{root}\tool\umodel\umodel_materials.exe",
-        "vgm_path":  r"{root}\tool\vgmstream\vgmstream-cli.exe",
-        "spine_path":  r"{root}\tool\spine\Spine.exe",
-        "out_path":  r"{root}\out",
-        "input_path": "NULL"
+        "ffm_path": r"{root}\tool\ffmpeg\bin\ffmpeg.exe",
+        "umo_path": r"{root}\tool\umodel\umodel_materials.exe",
+        "vgm_path": r"{root}\tool\vgmstream\vgmstream-cli.exe",
+        "quickbms_path": r"{root}\tool\quickbms\quickbms_4gb_files.exe",
+        "spine_path": r"{root}\tool\spine\Spine.exe",
+        "max_workers": 2,
+        "UseCNName": False,
+        "pak_path": "NULL",
+        "unpack_path": r"{root}\unpack",
+        "resource_path": r"{root}\unpack",
+        "past_path": "NULL",
+        "new_path": "NULL",
+        "increase_path": r"{root}\increase",
     }
+    """
+        "ffm_path": ffmpeg.exe 文件路径
+        "umo_path": umodel.exe 文件路径
+        "vgm_path": vgmstream-cli.exe 文件路径
+        "quickbms_path": quickbms_4gb_files.exe 文件路径
+        "spine_path": Spine.exe 文件路径
+        "max_workers": 多线程数
+        "UseCNName": 提取BGM文件时是否更改文件名为匹配到的中文名
+        解密解包 设置路径
+        "pak_path": snow_pak 文件夹路径
+        "unpack_path": 解密完成，待提取资源 文件夹路径(可选，默认为 "./unpack")
+        "resource_path": 提取资源导出 文件夹路径(可选，默认为 "./unpack")
+        提取增量资源 设置路径
+        "past_path": 旧版本 解包文件夹路径
+        "new_path": 新版本 解包文件夹路径
+        "increase_path": 增量解包导出 文件夹路径(可选，默认为 "./increase")
+        """
 
     def __init__(self, filename: str = CONFIG_NAME) -> None:
         self.file = os.path.join(ROOT_DIR, filename)
@@ -37,7 +68,7 @@ class ConfigManager:
         if key not in self._REQUIRED_KEYS:
             logger.warning(f"尝试访问未知配置项: {key!r}")
             return default
-        
+
         if key not in self.config:
             logger.warning(f"配置项 {key!r} 缺失，将返回默认值")
             return default
@@ -95,7 +126,7 @@ class ConfigManager:
                 logger.error(f"读取配置异常：{e}")
                 need_create = True
 
-        if need_create:                         # 只在必要时写一次
+        if need_create:  # 只在必要时写一次
             self._write(self._render_template())
             self.config = self._render_template()
             logger.info("默认配置已生成并载入")
@@ -106,7 +137,7 @@ class ConfigManager:
 
     def _render_template(self) -> dict:
         """把 {root} 占位符替换成实际路径"""
-        return {k: v.format(root=ROOT_DIR) for k, v in self._TEMPLATE.items()}
+        return {k: v.format(root=ROOT_DIR) if isinstance(v, str) else v for k, v in self._TEMPLATE.items()}
 
     def _write(self, data: dict):
         """写磁盘；确保目录存在"""
@@ -117,7 +148,11 @@ class ConfigManager:
         except Exception as e:
             logger.error(f"写入配置文件失败：{e}")
 
+
 def resource_path(relative_path: str) -> str:
     base_path = os.path.join(os.path.dirname(__file__), "res")
     logger.debug(f'资源目录：{base_path}')
     return os.path.join(base_path, relative_path)
+
+
+cfg = ConfigManager()
