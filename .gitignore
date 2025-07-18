@@ -4,8 +4,6 @@ logs
 nuitka_run.cmd
 config.json
 out
-dist/logs
-dist/config.json
-dist/out
-dist/main.dist
+dist
 .temp
+

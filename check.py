@@ -1,6 +1,6 @@
 from os import path
 import subprocess
-from config_manager import cfg
+from config_manager import ConfigManager
 from loguru import logger
 
 
@@ -9,11 +9,13 @@ def check_tool_availability() -> int:
     检查配置文件中指定的工具路径是否有效并可运行。
     返回 0 表示所有工具均通过；返回 1 表示存在不可用的工具。
     """
+    cfg = ConfigManager()
     tool_paths = {
         "FFmpeg":    (cfg.get("ffm_path"), ["-version"]),
         "vgmstream": (cfg.get("vgm_path"), []),
         "UModel":    (cfg.get("umo_path"), ["-help"]),
         "Spine":    (cfg.get("spine_path"), ["--help"]),
+        "quickbms":    (cfg.get("quickbms_path"), [""]),
     }
 
     failed = False  # 标记是否有检查失败
@@ -55,3 +57,6 @@ def check_tool_availability() -> int:
             failed = True
 
     return 0 if not failed else 1
+
+if __name__ == '__main__':
+    check_tool_availability()

@@ -4,10 +4,11 @@ import subprocess
 import binascii
 from loguru import logger
 from PIL import Image
-from config_manager import cfg
+from config_manager import ConfigManager
 from atlas_unpack import split_atlas
 from concurrent.futures import ThreadPoolExecutor
 import json
+
 
 
 # 工具函数：检查目录是否存在
@@ -20,7 +21,7 @@ def check_dir(_path: str, desc: str) -> bool:
 
 def png_convert(file_path, out_path):
     import tempfile
-
+    cfg = ConfigManager()
     root, name = path.split(file_path)
     file_name = path.splitext(name)[0]
     umo_path = str(cfg.get("umo_path"))
@@ -133,6 +134,7 @@ def split_and_save(text_data, clean_filename):
 
 
 def convert_spine_single(filename, root, input_path, output_path):
+    cfg = ConfigManager()
     file_path = path.join(root, filename)
     try:
         with open(file_path, 'rb') as file:

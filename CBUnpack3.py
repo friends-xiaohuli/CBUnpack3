@@ -5,7 +5,7 @@ import subprocess
 import sys
 from loguru import logger
 from convert import convert_to_png, convert_spine
-from config_manager import cfg
+from config_manager import ConfigManager
 from check import check_tool_availability
 from concurrent.futures import ThreadPoolExecutor
 
@@ -14,6 +14,8 @@ if '__compiled__' in globals():
     root_directory = sys.path[0]
 else:
     root_directory = path.dirname(path.abspath(__file__))
+
+cfg = ConfigManager()
 vgm_path = str(cfg.get("vgm_path"))
 ffm_path = str(cfg.get("ffm_path"))
 UseCNName = cfg.get("UseCNName")
@@ -169,87 +171,124 @@ def bgm(rootpath, out_path):
         for i in wem_names:
             if i in _line:
                 _l = _line.split("\t")
-                _ = [_l[1], _l[2]] + _l[2].split("_")
-                while len(_) < 6:
+                _p = _l[5].split("\\")
+                if "Chapter" in _p:
+                    _la2 = _p[3:8]
+                else:
+                    _la2 = _p[3:6]
+                _str = _l[2]
+                if " " in _str:
+                    _str = _str.split(" ")[0]
+                _ = [_l[1], "|".join(_la2), _str] + _str.split("_")
+                while len(_) < 8:
                     _.append("")
                 _sheet.append(_)
 
     # print(_sheet)
-    dlcstr = ""
-    for i in _sheet:
-        if "DLC" in i[3]:
-            dlcstr = "BGM_" + i[3] + "_name"
-            break
-    if dlcstr:
-        _path = path.join(rootpath, r"Game\Content\Settings\riki\Riki.txt")
-        _txt = open(_path, 'r+', encoding='utf-8')
-        _lines1 = []
-        for _line in _txt:
-            if dlcstr in _line:
-                __ = _line.split("\t")
-                __ = __[9].split("|")[-1], __[10].split(".")[-1]
-                _lines1.append(__)
-                # print(__)
-        _path = path.join(rootpath, r"Game\Content\Settings\language\riki.txt")
-        _txt = open(_path, 'r+', encoding='utf-8')
-        _lines2 = []
-        for _line in _txt:
-            if dlcstr in _line:
-                _lines2.append(_line.strip().split("\t"))
-                # print(_line.strip().split("\t"))
-        lines = []
-        linesnum = 0
-        for i in _lines2:
-            for u in _lines1:
-                if i[0] == u[1]:
-                    if "DLC" not in u[0]:
-                        linesnum += 1
-                    lines.append(i + [u[0]])
-                    break
-        # print(lines)
-        _sheetsnum = 0
-        for i in _sheet:
-            if "Story" == i[3]:
-                _sheetsnum += 1
-        flag = True if _sheetsnum == linesnum else False
-        # print("flag", flag, _sheetsnum, linesnum)
-        _n1 = 0
-        for n, i in enumerate(_sheet):
-            for u in lines:
-                if i[3] + "_" + i[4] == u[2]:
-                    _sheet[n].extend(["", u[1]])
-                    break
+
+    _path = path.join(rootpath, r"Game\Content\Settings\language\riki.txt")
+    _txt = open(_path, 'r+', encoding='utf-8')
+    _dict = {}
+    for _line in _txt:
+        if "BGM_DLC" in _line and "_name" in _line:
+            sl = _line.split("\t")
+            _dict[sl[0]] = sl[1]
+    _path = path.join(rootpath, r"Game\Content\Settings\riki\Riki.txt")
+    _txt = open(_path, 'r+', encoding='utf-8')
+    _lines1 = []
+    for _line in _txt:
+        if "BGM|" in _line:
+            __ = _line.split("\t")
+            nameseq = __[10].split(".")[-1]
+            labels = __[9].split("|")
+            for n, i in enumerate(labels):
+                labels[n] = i.split(",")[0]
+            if "Fight|" in _line:
+                label = "|".join(labels[:-1])
             else:
-                if flag and i[3] == 'Story':
-                    # print(i)
-                    _n = int(_n1)
-                    for u in lines:
-                        if "DLC" not in u[2]:
-                            # print(u[2])
-                            if not _n:
-                                _n1 += 1
-                                _sheet[n].extend(["", u[1]])
-                                break
-                            else:
-                                _n -= 1
+                label = "|".join(labels)
+            _lines1.append([label, nameseq, _dict[nameseq]])
+    # 写出 sheet.txt
+    sheet_path = path.join(out_path, "全中文名对照.txt")
+    with open(sheet_path, 'w', encoding='utf-8') as f:
+        for i in _lines1:
+            f.write("\t".join(i) + "\n")
+    logger.success(f"[✔] 已生成标签文件: {sheet_path}")
+
+    _dict = {}
+    for l1, _, l2 in _lines1:
+        _l = l1.split("|")
+        if len(_l) > 3:
+            _d: dict = _dict.get("|".join(_l[:3]).lower(), {})
+            _d["|".join(_l[3:]).lower()] = l2
+
+            _dict["|".join(_l[:3]).lower()] = _d
+        else:
+            _dict[l1.lower()] = l2
+
+    # print("_dict:", _dict)
+    dd = set()
+    for n, line in enumerate(_sheet):
+        _str = line[1]
+        if "Chapter" in _str:
+            v1 = _dict.get("|".join(_str.split("|")[:3]).lower(), None)
+        else:
+            v1 = _dict.get(_str.lower(), None)
+        if isinstance(v1, str):
+            _sheet[n].append(v1)
+            dd.add(v1)
+            continue
+        elif isinstance(v1, dict):
+            if "Chapter" in _str:
+                _cn = v1.get("|".join(_str.split("|")[3:]).lower(), None)
+            else:
+                _cn = v1.get(f"{line[4]}|{line[5]}".lower(), None)
+            if isinstance(_cn, str):
+                dd.add(_cn)
+                _sheet[n].append(_cn)
+                continue
+            elif isinstance(_cn, dict):
+                raise
+        _cn = _dict.get(f"BGM|Story|{line[4]}_{line[5]}".lower(), None)
+        if not _cn:
+            _cn = _dict.get(f"BGM|UI|{line[4]}_{line[5]}".lower(), None)
+        if isinstance(_cn, str):
+            dd.add(_cn)
+        else:
+            _cn = ""
+        _sheet[n].append(_cn)
+
+    # print("num:", len(dd))
+    # print("dd:", dd)
 
     # 写出 sheet.txt
-    sheet_path = path.join(out_path, "sheet.txt")
+    sheet_path = path.join(out_path, "全音乐文件信息对照.txt")
     with open(sheet_path, 'w', encoding='utf-8') as f:
         for i in _sheet:
             f.write("\t".join(i) + "\n")
     logger.success(f"[✔] 已生成标签文件: {sheet_path}")
 
+    # 写出 sheet.txt
+    sheet_path = path.join(out_path, "未成功匹配的中文名对照.txt")
+    with open(sheet_path, 'w', encoding='utf-8') as f:
+        for i in _lines1:
+            if i[2] not in dd:
+                f.write("\t".join(i) + "\n")
+    logger.success(f"[✔] 已生成标签文件: {sheet_path}")
+
     if UseCNName:
-        cnnali = [i[7] if len(i) == 8 else "" for i in _sheet]
+        cnnali = [i[8] if len(i) == 8 else "" for i in _sheet]
         nnli = []
         for i in _sheet:
-            if len(i) == 8 and 1 == cnnali.count(cnna := i[7]):
+            if len(i) == 8 and 1 == cnnali.count(cnna := i[8]):
                 nnli.append(f"{cnna} - 尘白禁区")
             else:
                 nnli.append(i[0])
     else:
         nnli = list(wem_names)
+    # print("_sheet:", _sheet)
+    # print("nnli:", nnli)
+    # return
     # 解码 wem → flac
     max_workers = min(32, (cpu_count() or 1) * 4)
 

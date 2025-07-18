@@ -10,7 +10,9 @@ from CBUnpack3 import CBUNpakMain
 from CBUnpack import CBUNpakIncr
 from check import check_tool_availability
 import subprocess
-from spinejsonexport import sjemain
+from spinejsonexport2 import sjemain
+from config_manager import ConfigManager
+
 
 logger.info('''
  ###    License
@@ -33,7 +35,7 @@ logger.info('''
 ''')
 
 # 版本号和构建时间
-VER = "3.0.5"
+VER = "3.0.6"
 BUILD = "2025-7"
 
 if '__compiled__' in globals():
@@ -73,7 +75,8 @@ def main_menu():
                 {"name": "0.设置文件重置", "value": "reset"},
                 {"name": "1.测试第三方exe有效性", "value": "check"},
                 {"name": "2.开始解包", "value": "CBUNpakMain"},
-                {"name": "3.待开发", "value": "alone"},
+                {"name": "3.独立小工具", "value": "alone"},
+                {"name": "4.待开发", "value": "debug"},
                 questionary.Separator(),  # 添加视觉分隔线
                 {"name": "by 绘星痕、小狐狸", "disabled": BUILD}  # 禁用选项
             ],
@@ -89,12 +92,15 @@ def main_menu():
             choice_check()
         elif choice == "alone":
             choice_alone()
+        elif choice == "debug":
+            choice_debug()
         elif choice is None:
             logger.debug("检测程序已被用户中断，正在退出...")
             sys.exit(0)
 
 
 def choice_reset():
+    cfg = ConfigManager()
     cfg.reset()
 
 
@@ -103,6 +109,7 @@ def choice_check():
 
 
 def SnowUnpack():
+    cfg = ConfigManager()
     pak_path = str(cfg.get("pak_path"))
     quickbms_path = str(cfg.get("quickbms_path"))
     unpack_path = str(cfg.get("unpack_path"))
@@ -118,22 +125,23 @@ def SnowUnpack():
 
 
 def choice_CBUNpakMain():
+    cfg = ConfigManager()
     choice1 = questionary.select(
         "是否需要解密pak文件：",
         choices=[
-            {"name": "请选择操作：", "disabled": ""},  # 禁用选项
+            {"name": "请选择操作：", "disabled": "↑↓选择"},  # 禁用选项
             questionary.Separator(),  # 视觉分隔线
             {"name": "0.是", "value": True},
             {"name": "1.否", "value": False},
         ],
         use_arrow_keys=True  # 启用箭头导航
     ).ask()
-    # 处理用户选择
+
 
     choice2 = questionary.select(
         "提取全部默认资源 or 提取增量资源：",
         choices=[
-            {"name": "请选择操作：", "disabled": ""},  # 禁用选项
+            {"name": "请选择操作：", "disabled": "↑↓选择"},  # 禁用选项
             questionary.Separator(),  # 视觉分隔线
             {"name": "0.提取全部默认资源", "value": 0},
             {"name": "1.提取增量资源", "value": 1},
@@ -145,7 +153,7 @@ def choice_CBUNpakMain():
         choice3 = questionary.select(
             "是否渲染Spine资源：",
             choices=[
-                {"name": "请选择操作：", "disabled": ""},  # 禁用选项
+                {"name": "请选择操作：", "disabled": "↑↓选择"},  # 禁用选项
                 questionary.Separator(),  # 视觉分隔线
                 {"name": "0.是", "value": 1},
                 {"name": "1.否", "value": 0},
@@ -155,6 +163,7 @@ def choice_CBUNpakMain():
     else:
         choice3 = 0
     cfg.Json_list = []
+
     # 处理用户选择
     if choice1:
         SnowUnpack()
@@ -165,8 +174,35 @@ def choice_CBUNpakMain():
         if choice3:
             sjemain()
 
-
 def choice_alone():
+    cfg = ConfigManager()
+    choice = questionary.select(
+        "小工具合集",
+        choices=[
+            {"name": "请选择：", "disabled": "↑↓选择"},  # 禁用选项
+            questionary.Separator(),  # 视觉分隔线
+            {"name": "0.PAK文件独立解密", "value": "UNPAK"},
+            {"name": "1.SPINE动画独立渲染", "value": "SPINE"},
+            {"name": "2.BGM背景音乐独立分离打标", "value": "BGM"},
+            {"name": "3.VOICE女孩语音独立分离打标", "value": "VOICE"},
+        ],
+        use_arrow_keys=True  # 启用箭头导航
+    ).ask()
+    # 处理用户选择
+    if choice == "UNPAK":
+        choice_debug()
+    elif choice == "SPINE":
+        choice_debug()
+    elif choice == "BGM":
+        choice_debug()
+    elif choice == "VOICE":
+        choice_debug()
+    elif choice is None:
+        logger.debug("检测程序已被用户中断，正在退出...")
+        sys.exit(0)
+
+
+def choice_debug():
     logger.warning("Ciallo～(∠・ω< )⌒★...")
     audio_path = resource_path("Ciallo.wav")
     winsound.PlaySound(audio_path, winsound.SND_ASYNC)
@@ -264,25 +300,7 @@ def choice_alone():
 if __name__ == "__main__":
     try:
         init_logger()
-        from config_manager import cfg
-
         main_menu()
     except KeyboardInterrupt:
         logger.warning("程序已意外退出...")
         exit()
-    """
-        "ffm_path": ffmpeg.exe 文件路径
-        "umo_path": umodel.exe 文件路径
-        "vgm_path": vgmstream-cli.exe 文件路径
-        "quickbms_path": quickbms_4gb_files.exe 文件路径
-        "spine_path": Spine.exe 文件路径
-        "max_workers": 多线程数
-        解密解包 设置路径
-        "pak_path": snow_pak 文件夹路径
-        "unpack_path": 解密完成，待提取资源 文件夹路径(可选，默认为 "./unpack")
-        "resource_path": 提取资源导出 文件夹路径(可选，默认为 "./unpack")
-        提取增量资源 设置路径
-        "past_path": 旧版本 解包文件夹路径
-        "new_path": 新版本 解包文件夹路径
-        "increase_path": 增量解包导出 文件夹路径(可选，默认为 "./increase")
-        """

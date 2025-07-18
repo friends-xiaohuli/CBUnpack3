@@ -19,6 +19,7 @@ CONFIG_NAME = "config.json"
 
 class ConfigManager:
     Json_list = []
+    _loaded_once = False
     _REQUIRED_KEYS = \
         ("ffm_path", "umo_path", "vgm_path", "quickbms_path", "spine_path",
          "max_workers", "UseCNName",
@@ -32,7 +33,7 @@ class ConfigManager:
         "spine_path": r"{root}\tool\spine\Spine.exe",
         "max_workers": 2,
         "UseCNName": False,
-        "pak_path": "NULL",
+        "pak_path": r"NULL\Snow\data\game\Game\Content\Paks",
         "unpack_path": r"{root}\unpack",
         "resource_path": r"{root}\unpack",
         "past_path": "NULL",
@@ -40,22 +41,22 @@ class ConfigManager:
         "increase_path": r"{root}\increase",
     }
     """
-        "ffm_path": ffmpeg.exe 文件路径
-        "umo_path": umodel.exe 文件路径
-        "vgm_path": vgmstream-cli.exe 文件路径
-        "quickbms_path": quickbms_4gb_files.exe 文件路径
-        "spine_path": Spine.exe 文件路径
-        "max_workers": 多线程数
-        "UseCNName": 提取BGM文件时是否更改文件名为匹配到的中文名
-        解密解包 设置路径
-        "pak_path": snow_pak 文件夹路径
-        "unpack_path": 解密完成，待提取资源 文件夹路径(可选，默认为 "./unpack")
-        "resource_path": 提取资源导出 文件夹路径(可选，默认为 "./unpack")
-        提取增量资源 设置路径
-        "past_path": 旧版本 解包文件夹路径
-        "new_path": 新版本 解包文件夹路径
-        "increase_path": 增量解包导出 文件夹路径(可选，默认为 "./increase")
-        """
+    "ffm_path": ffmpeg.exe 文件路径
+    "umo_path": umodel.exe 文件路径
+    "vgm_path": vgmstream-cli.exe 文件路径
+    "quickbms_path": quickbms_4gb_files.exe 文件路径
+    "spine_path": Spine.exe 文件路径
+    "max_workers": 多线程数
+    "UseCNName": 音频文件应用匹配到的中文名
+    # 解密解包 设置路径
+    "pak_path": snow_pak 文件夹路径
+    "unpack_path": INPUT路径 解密完成，待提取资源 文件夹路径(可选，默认为 "./unpack")
+    "resource_path": OUT路径 提取资源导出 文件夹路径(可选，默认为 "./unpack")
+    # 提取增量资源 设置路径
+    "past_path": 旧版本 解包文件夹路径
+    "new_path": 新版本 解包文件夹路径
+    "increase_path": 增量解包导出 文件夹路径(可选，默认为 "./increase")
+    """
 
     def __init__(self, filename: str = CONFIG_NAME) -> None:
         self.file = os.path.join(ROOT_DIR, filename)
@@ -115,7 +116,9 @@ class ConfigManager:
                     data = json.load(f)
                 if self._validate_config(data):
                     self.config = data
-                    logger.info("配置文件读取成功！")
+                    if not ConfigManager._loaded_once:
+                        logger.info("配置文件读取成功！")
+                        ConfigManager._loaded_once = True
                     return
                 logger.warning("配置缺键或损坏，将重建")
                 need_create = True
@@ -155,4 +158,4 @@ def resource_path(relative_path: str) -> str:
     return os.path.join(base_path, relative_path)
 
 
-cfg = ConfigManager()
+
