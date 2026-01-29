@@ -225,6 +225,6 @@ if __name__ == '__main__':
     #                r"E:\Unpack\尘白禁区\DLC30")
     # convert_spine(r"E:\Unpack\尘白禁区\step1\Game\Content\Plot\CgPlot\Dlc17_plots\PoltAsset\spine",
     #               r"E:\Unpack\尘白禁区\活动界面spine")
-    # convert_to_png(r"H:\SnowbreakContainmentZone\V3.0.0.130-20250710\UNPAK\Game\Content\UI\Pose",
-    #                r"H:\SnowbreakContainmentZone\V3.0.0.130-20250710\UNPAK\Game\Content\UI\Pose\img")
+    # convert_to_png(r"H:\SnowbreakContainmentZone\V3.5.0.119-20260129\UNPAK\Game\Content\UI\Picture\DLC35\vx",
+    #                r"H:\SnowbreakContainmentZone\V3.5.0.119-20260129\UNPAK\Game\Content\UI\Picture\DLC35\vx\img")
     logger.debug("程序已退出")

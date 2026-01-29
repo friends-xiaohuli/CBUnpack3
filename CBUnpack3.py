@@ -291,7 +291,10 @@ def bgm(rootpath, out_path):
     # return
     # 解码 wem → flac
     max_workers = min(32, (cpu_count() or 1) * 4)
-
+    print(wem_names)
+    print(nnli)
+    print(_sheet)
+    print(cnnali)
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # 提交所有任务到线程池，并传入索引 i
         futures = [
@@ -318,12 +321,37 @@ def CBUNpakMain():
 
     logger.info("开始资源解包流程...")
 
-    activity_ui(input_path, out_path)
-    login_ui(input_path, out_path)
-    bgm(input_path, out_path)
-    chara(input_path, out_path)
-    ser(input_path, out_path)
-    fashion(input_path, out_path)
-    dialogue(input_path, out_path)
+    # 定义所有任务
+    tasks = [
+        ("活动UI", activity_ui, input_path, out_path),
+        ("登录界面", login_ui, input_path, out_path),
+        ("BGM音频", bgm, input_path, out_path),
+        ("角色Spine", chara, input_path, out_path),
+        ("Ser图像", ser, input_path, out_path),
+        ("Fashion图像", fashion, input_path, out_path),
+        ("对话图像", dialogue, input_path, out_path),
+    ]
+    
+    def run_task(task_info):
+        name, func, inp, outp = task_info
+        logger.info(f"开始处理: {name}")
+        try:
+            func(inp, outp)
+            logger.success(f"完成: {name}")
+        except Exception as e:
+            logger.error(f"{name} 处理失败: {e}")
+    
+    # 使用线程池并行执行任务
+    max_workers = min(4, (cpu_count() or 1))  # 限制并发数避免资源争用
+    
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(run_task, task) for task in tasks]
+        for future in futures:
+            future.result()
 
     logger.success("资源处理完成 ✅")
+
+if __name__ == "__main__":
+    input_path = str(cfg.get("unpack_path"))
+    out_path = str(cfg.get("resource_path"))
+    bgm(input_path, out_path)

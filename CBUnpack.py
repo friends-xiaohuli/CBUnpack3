@@ -325,21 +325,27 @@ def bgm(_past_path, _new_path, _increase_path):
     if UseCNName:
         cnnali = [i[8] if len(i) == 8 else "" for i in _sheet]
         nnli = []
+        onli = []
         for i in _sheet:
+            onli.append(i[0])
             if len(i) == 8 and 1 == cnnali.count(cnna := i[8]):
                 nnli.append(f"{cnna} - 尘白禁区")
             else:
                 nnli.append(i[0])
     else:
+        onli = list(_list)
         nnli = list(_list)
 
     max_workers = min(32, (cpu_count() or 1) * 4)
-
+    # print(_list)
+    # print(nnli)
+    # print(_sheet)
+    # print(cnnali)
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # 提交所有任务到线程池，并传入索引 i
         futures = [
             executor.submit(convert_audio_single, oldn, newn, path_out)
-            for oldn, newn in zip(_list, nnli)
+            for oldn, newn in zip(onli, nnli)
         ]
 
         # 可选：等待所有任务完成（with 语句会自动等待）
@@ -394,14 +400,44 @@ def CBUNpakIncr():
         logger.critical("终止处理：存在无效工具目录")
         return
 
-    logger.info("开始资源解包流程...")
+    logger.info("开始增量资源解包流程...")
 
-    activity_ui(past_path, new_path, increase_path)
-    login_ui(past_path, new_path, increase_path)
+<<<<<<< HEAD
+    # 定义所有任务
+    tasks = [
+        ("活动UI", activity_ui, past_path, new_path, increase_path),
+        ("登录界面", login_ui, past_path, new_path, increase_path),
+        ("BGM音频", bgm, past_path, new_path, increase_path),
+        ("角色Spine", chara, past_path, new_path, increase_path),
+        ("Ser图像", ser, past_path, new_path, increase_path),
+        ("Fashion图像", fashion, past_path, new_path, increase_path),
+        ("对话图像", dialogue, past_path, new_path, increase_path),
+    ]
+    
+    def run_task(task_info):
+        name, func, past, new, incr = task_info
+        logger.info(f"开始处理: {name}")
+        try:
+            func(past, new, incr)
+            logger.success(f"完成: {name}")
+        except Exception as e:
+            logger.error(f"{name} 处理失败: {e}")
+    
+    # 使用线程池并行执行任务
+    max_workers = min(4, (cpu_count() or 1))  # 限制并发数避免资源争用
+    
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(run_task, task) for task in tasks]
+        for future in futures:
+            future.result()
+=======
+    # activity_ui(past_path, new_path, increase_path)
+    # login_ui(past_path, new_path, increase_path)
     bgm(past_path, new_path, increase_path)
-    chara(past_path, new_path, increase_path)
-    ser(past_path, new_path, increase_path)
-    fashion(past_path, new_path, increase_path)
-    dialogue(past_path, new_path, increase_path)
+    # chara(past_path, new_path, increase_path)
+    # ser(past_path, new_path, increase_path)
+    # fashion(past_path, new_path, increase_path)
+    # dialogue(past_path, new_path, increase_path)
+>>>>>>> 0bee66f31265870a9750919bfbebdb301fc0b178
 
-    logger.success("资源处理完成 ✅")
+    logger.success("增量资源处理完成 ✅")

@@ -84,14 +84,11 @@ def sjemain():
             for json_file in cfg.Json_list
         ]
 
-        # 可选：等待所有任务完成（with 语句会自动等待）
-        for future in futures:
-            future.result()  # 检查是否有异常
 
     logger.success("🏁 SPINE动画 导出任务全部完成！")
 
 # 使用示例
 if __name__ == "__main__":
-    INPUT_JSON = r"H:\SnowbreakContainmentZone\V3.0.0.130-20250710\UNPAK\out\CgPlot\Dlc18_plots\sp_pic_dlc18_bg001\sp_pic_dlc18_bg001.json"
+    INPUT_JSON = r"E:\Unpack\尘白禁区\increase"
     exportSpineJson(INPUT_JSON)
     # convert_mov_to_mp4(r"E:\Unpack\尘白禁区\登录界面spine\sp_login_bg019\sp_login_bg019.mov")

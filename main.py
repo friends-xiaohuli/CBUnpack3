@@ -2,6 +2,7 @@ import shutil
 from os import path, makedirs, getcwd
 import sys
 import time
+from tkinter import Tk, filedialog
 import winsound
 from loguru import logger
 import questionary
@@ -9,6 +10,7 @@ from config_manager import resource_path
 from CBUnpack3 import CBUNpakMain
 from CBUnpack import CBUNpakIncr
 from check import check_tool_availability
+from convert import convert_to_png
 import subprocess
 from spinejsonexport2 import sjemain
 from config_manager import ConfigManager
@@ -167,6 +169,7 @@ def choice_CBUNpakMain():
     # 处理用户选择
     if choice1:
         SnowUnpack()
+
     if choice2 == 0:
         CBUNpakMain()
     elif choice2 == 1:
@@ -185,6 +188,7 @@ def choice_alone():
             {"name": "1.SPINE动画独立渲染", "value": "SPINE"},
             {"name": "2.BGM背景音乐独立分离打标", "value": "BGM"},
             {"name": "3.VOICE女孩语音独立分离打标", "value": "VOICE"},
+            {"name": "4.IMG图片遍历解包", "value": "IMG"},
         ],
         use_arrow_keys=True  # 启用箭头导航
     ).ask()
@@ -197,9 +201,38 @@ def choice_alone():
         choice_debug()
     elif choice == "VOICE":
         choice_debug()
+    elif choice == "IMG":
+        choice_Oimg()
     elif choice is None:
         logger.debug("检测程序已被用户中断，正在退出...")
         sys.exit(0)
+
+
+
+def choice_Oimg():
+    # 选择 rootpath 和 out_path 文件夹
+    rootpath = open_folder_dialog("选择输入文件夹")
+    out_path = open_folder_dialog("选择输出文件夹 (/img)")
+
+    if rootpath and out_path:
+        # 假设你要进行的操作，创建目录并进行文件转换
+        _p1 = path.join(rootpath)
+        _p2 = path.join(out_path, "img")
+
+        # 创建输出文件夹
+        makedirs(_p2, exist_ok=True)
+
+        # 假设你要做的转换操作
+        convert_to_png(_p1, _p2)
+
+
+def open_folder_dialog(title="选择文件夹"):
+    # 打开文件夹选择对话框
+    root = Tk()
+    root.withdraw()  # 隐藏主窗口
+    folder_path = filedialog.askdirectory(title=title)  # 返回选中的文件夹路径
+    return folder_path
+
 
 
 def choice_debug():
